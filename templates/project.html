@@ -1,0 +1,284 @@
+"""
+Privance Mkenda - Data Scientist Portfolio
+Flask Backend — Production-ready for Render.com deployment
+"""
+
+import os
+import requests
+from flask import Flask, render_template, request, jsonify
+from datetime import datetime
+
+# ============================================================
+# APP CONFIG
+# ============================================================
+
+app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'privance-mkenda-portfolio-dev-key')
+
+# ============================================================
+# RESEND CONFIG
+# Set these as Environment Variables on Render:
+#   RESEND_API_KEY  = re_xxxxxxxxxxxxxxxx   ← from resend.com dashboard
+#   ADMIN_EMAIL     = mkendaprivance@email.com  ← where you receive messages
+#   FROM_EMAIL      = onboarding@resend.dev     ← or your verified domain email
+# ============================================================
+
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+ADMIN_EMAIL    = os.environ.get('ADMIN_EMAIL', '')
+FROM_EMAIL     = os.environ.get('FROM_EMAIL', 'onboarding@resend.dev')
+
+
+def send_email_notification(name, email, subject, message):
+    """Send contact form message to admin via Resend API."""
+    if not all([RESEND_API_KEY, ADMIN_EMAIL]):
+        print("⚠️  RESEND_API_KEY or ADMIN_EMAIL not set — skipping email.")
+        return False
+
+    try:
+        html_body = f"""
+        <html><body style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px;">
+          <h2 style="color:#6c63ff;">📬 New Portfolio Contact</h2>
+          <table style="width:100%;border-collapse:collapse;">
+            <tr><td style="padding:8px;font-weight:bold;width:90px;">Name</td><td style="padding:8px;">{name}</td></tr>
+            <tr style="background:#f9f9f9;"><td style="padding:8px;font-weight:bold;">Email</td><td style="padding:8px;"><a href="mailto:{email}">{email}</a></td></tr>
+            <tr><td style="padding:8px;font-weight:bold;">Subject</td><td style="padding:8px;">{subject or '—'}</td></tr>
+          </table>
+          <h3 style="color:#333;margin-top:24px;">Message</h3>
+          <div style="background:#f0f0ff;border-left:4px solid #6c63ff;padding:16px;border-radius:4px;white-space:pre-wrap;">{message}</div>
+          <p style="color:#999;font-size:12px;margin-top:24px;">Sent from your portfolio contact form · {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}</p>
+        </body></html>
+        """
+
+        response = requests.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {RESEND_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "from": FROM_EMAIL,
+                "to": [ADMIN_EMAIL],
+                "reply_to": email,
+                "subject": f"[Portfolio] {subject or 'New message'} — from {name}",
+                "html": html_body
+            }
+        )
+
+        if response.status_code == 200 or response.status_code == 201:
+            print(f"✅ Email sent to {ADMIN_EMAIL} via Resend")
+            return True
+        else:
+            print(f"❌ Resend error {response.status_code}: {response.text}")
+            return False
+
+    except Exception as e:
+        print(f"❌ Email error: {e}")
+        return False
+
+
+# ============================================================
+# DATA
+# ============================================================
+
+PROFILE = {
+    "name": "Privance Mkenda",
+    "title": "Data Scientist & Machine Learning Engineer",
+    "email": "mkendaprivance@email.com",
+    "phone": "+255 679844385",
+    "location": "Dar es Salaam, Tanzania",
+    "bio": [
+        "I'm Privance Mkenda, a passionate Data Scientist with expertise in machine learning, statistical analysis, and data-driven decision making. I thrive on uncovering hidden patterns in complex datasets and transforming them into strategic solutions.",
+        "My journey in data science blends a strong foundation in mathematics and statistics with hands-on experience in deploying ML models to production. I've worked across diverse domains — from healthcare and finance to agriculture and e-commerce — always driven by curiosity and impact.",
+        "When I'm not crunching numbers, you'll find me contributing to open-source data tools, mentoring aspiring data scientists, and staying on the cutting edge of AI research."
+    ],
+    "stats": {
+        "years_experience": "2+",
+        "projects_completed": "30+",
+        "happy_clients": "12+",
+        "models_deployed": "8+"
+    },
+    "social": {
+        "github":   "https://github.com/VARANE-MKENDA",
+        "linkedin": "https://linkedin.com/in/privancemkenda",
+        "twitter":  "https://twitter.com/privancemkenda",
+        "kaggle":   "https://kaggle.com/privancemkenda"
+    }
+}
+
+SKILLS = [
+    {"category": "Programming Languages", "icon": "⌨️", "color": "#eef2ff", "accent": "#6c63ff",
+     "skills": ["Python", "R", "SQL", "Julia", "JavaScript", "Bash"]},
+    {"category": "Machine Learning & AI", "icon": "🧠", "color": "#fef3c7", "accent": "#d97706",
+     "skills": ["Scikit-Learn", "TensorFlow", "PyTorch", "XGBoost", "NLP", "Computer Vision", "LLMs"]},
+    {"category": "Data Engineering", "icon": "🔧", "color": "#ecfdf5", "accent": "#059669",
+     "skills": ["Apache Spark", "Airflow", "Kafka", "ETL Pipelines", "dbt", "Docker"]},
+    {"category": "Data Visualization", "icon": "📊", "color": "#fce7f3", "accent": "#db2777",
+     "skills": ["Matplotlib", "Seaborn", "Plotly", "Tableau", "Power BI", "D3.js"]},
+    {"category": "Databases & Cloud", "icon": "🗄️", "color": "#e0f2fe", "accent": "#0284c7",
+     "skills": ["PostgreSQL", "MongoDB", "AWS", "GCP", "BigQuery", "Snowflake"]},
+    {"category": "Core Competencies", "icon": "💡", "color": "#f5f3ff", "accent": "#7c3aed",
+     "skills": ["Statistical Analysis", "A/B Testing", "Feature Engineering", "Data Storytelling", "Agile"]}
+]
+
+PROJECTS = [
+    {"id": 1, "title": "Disease Outbreak Predictor",
+     "description": "Built an LSTM-based time-series model to predict disease outbreaks using health facility data, achieving 92% accuracy and helping allocate resources proactively.",
+     "tags": ["Python", "TensorFlow", "Time Series", "GCP"], "icon": "🏥",
+     "banner": "linear-gradient(135deg, #667eea, #764ba2)", "link": "#"},
+    {"id": 2, "title": "Fraud Detection Engine",
+     "description": "Developed a real-time fraud detection system using ensemble methods (XGBoost + Isolation Forest) for a fintech company, reducing fraud losses by 40%.",
+     "tags": ["Python", "XGBoost", "Kafka", "Docker"], "icon": "💳",
+     "banner": "linear-gradient(135deg, #f093fb, #f5576c)", "link": "#"},
+    {"id": 3, "title": "Crop Yield Forecasting",
+     "description": "Created a machine learning pipeline integrating satellite imagery and weather data to forecast crop yields for smallholder farmers across East Africa.",
+     "tags": ["Python", "Random Forest", "GEE", "NDVI"], "icon": "🌾",
+     "banner": "linear-gradient(135deg, #4facfe, #00f2fe)", "link": "#"},
+    {"id": 4, "title": "Sentiment Analysis Dashboard",
+     "description": "Built an NLP-powered dashboard analyzing social media sentiment in real-time for brand monitoring, processing over 100K tweets daily.",
+     "tags": ["NLP", "BERT", "Streamlit", "AWS"], "icon": "💬",
+     "banner": "linear-gradient(135deg, #43e97b, #38f9d7)", "link": "#"},
+    {"id": 5, "title": "Customer Churn Prediction",
+     "description": "Designed a predictive churn model for an e-commerce platform, identifying at-risk customers with 88% recall and enabling targeted retention campaigns.",
+     "tags": ["Scikit-Learn", "SHAP", "SQL", "Tableau"], "icon": "🛒",
+     "banner": "linear-gradient(135deg, #fa709a, #fee140)", "link": "#"},
+    {"id": 6, "title": "Automated Reporting Pipeline",
+     "description": "Engineered an end-to-end data pipeline with Apache Airflow that automates KPI reporting, reducing manual reporting time by 80%.",
+     "tags": ["Airflow", "dbt", "BigQuery", "Python"], "icon": "📈",
+     "banner": "linear-gradient(135deg, #a18cd1, #fbc2eb)", "link": "#"}
+]
+
+EXPERIENCE = [
+    {"year": "2025 – 2026", "role": "Data Scientist", "company": "Freelance / Consulting",
+     "description": "Developed predictive models and interactive dashboards for enterprise clients. Specialized in NLP and customer analytics."},
+    {"year": "2024 – 2025", "role": "Junior Data Analyst", "company": "InsightHub Consulting",
+     "description": "Performed exploratory data analysis, built automated reports, and assisted in building the company's first machine learning models."},
+    {"year": "2024 – 2026", "role": "B.Sc. Computer Science & Statistics",
+     "company": "Eastern Statistical Training Centre",
+     "description": "Graduated with honors. Research focus on applying machine learning to public health datasets."}
+]
+
+SERVICES = [
+    {"icon": "🤖", "title": "Machine Learning",
+     "description": "Custom ML models for prediction, classification, clustering, and recommendation systems."},
+    {"icon": "📊", "title": "Data Analytics",
+     "description": "Deep-dive analysis, KPI tracking, A/B testing, and actionable business insights."},
+    {"icon": "🔄", "title": "Data Engineering",
+     "description": "Scalable data pipelines, ETL workflows, and cloud data infrastructure setup."},
+    {"icon": "📈", "title": "Visualization & BI",
+     "description": "Interactive dashboards and compelling data stories using Tableau, Power BI, and custom tools."}
+]
+
+messages_store = []
+
+
+# ============================================================
+# ROUTES
+# ============================================================
+
+@app.route('/')
+def home():
+    return render_template('index.html',
+                           profile=PROFILE, skills=SKILLS,
+                           projects=PROJECTS, experience=EXPERIENCE,
+                           services=SERVICES, year=datetime.now().year)
+
+@app.route('/project/<int:project_id>')
+def project_detail(project_id):
+    project = next((p for p in PROJECTS if p['id'] == project_id), None)
+    if project is None:
+        return render_template('404.html'), 404
+    return render_template('project.html', project=project, profile=PROFILE)
+
+
+# ============================================================
+# API ROUTES
+# ============================================================
+
+@app.route('/api/profile')
+def api_profile():
+    return jsonify({"status": "success", "data": PROFILE})
+
+@app.route('/api/skills')
+def api_skills():
+    return jsonify({"status": "success", "data": SKILLS})
+
+@app.route('/api/projects')
+def api_projects():
+    return jsonify({"status": "success", "data": PROJECTS})
+
+@app.route('/api/experience')
+def api_experience():
+    return jsonify({"status": "success", "data": EXPERIENCE})
+
+@app.route('/api/services')
+def api_services():
+    return jsonify({"status": "success", "data": SERVICES})
+
+
+@app.route('/api/contact', methods=['POST'])
+def api_contact():
+    data = request.get_json()
+    if not data:
+        return jsonify({"status": "error", "message": "No data provided"}), 400
+
+    name    = data.get('name', '').strip()
+    email   = data.get('email', '').strip()
+    subject = data.get('subject', '').strip()
+    message = data.get('message', '').strip()
+
+    errors = []
+    if not name:                      errors.append("Name is required")
+    if not email or '@' not in email: errors.append("Valid email is required")
+    if not message:                   errors.append("Message is required")
+
+    if errors:
+        return jsonify({"status": "error", "message": ", ".join(errors)}), 400
+
+    msg = {
+        "id": len(messages_store) + 1,
+        "name": name, "email": email,
+        "subject": subject, "message": message,
+        "timestamp": datetime.now().isoformat(), "read": False
+    }
+    messages_store.append(msg)
+
+    email_sent = send_email_notification(name, email, subject, message)
+    print(f"📧 Contact from {name} ({email}) — Resend: {email_sent}")
+
+    return jsonify({
+        "status": "success",
+        "message": f"Thank you {name}! Your message has been received. I'll get back to you soon."
+    }), 201
+
+
+@app.route('/api/messages')
+def api_messages():
+    return jsonify({"status": "success", "data": messages_store, "count": len(messages_store)})
+
+
+# ============================================================
+# ERROR HANDLERS
+# ============================================================
+
+@app.errorhandler(404)
+def not_found(e):
+    if request.path.startswith('/api/'):
+        return jsonify({"status": "error", "message": "Endpoint not found"}), 404
+    return render_template('404.html'), 404
+
+@app.errorhandler(500)
+def server_error(e):
+    if request.path.startswith('/api/'):
+        return jsonify({"status": "error", "message": "Internal server error"}), 500
+    return render_template('500.html'), 500
+
+
+# ============================================================
+# RUN
+# ============================================================
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    debug = os.environ.get('FLASK_ENV') != 'production'
+    print(f"🚀 Starting on port {port} | debug={debug}")
+    app.run(debug=debug, host='0.0.0.0', port=port)
