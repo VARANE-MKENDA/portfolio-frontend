@@ -3,6 +3,11 @@
  * Handles: Contact form, scroll reveal, nav, toasts, API calls
  */
 
+// ============================================================
+// BACKEND API URL — Render.com
+// ============================================================
+const API_BASE_URL = 'https://portifolio-backend.onrender.com';
+
 document.addEventListener('DOMContentLoaded', () => {
     initScrollReveal();
     initActiveNav();
@@ -87,7 +92,6 @@ function initMobileMenu() {
         toggle.addEventListener('click', () => {
             navLinks.classList.toggle('active');
         });
-        // Close menu when a link is clicked
         navLinks.querySelectorAll('a').forEach(link => {
             link.addEventListener('click', () => {
                 navLinks.classList.remove('active');
@@ -97,7 +101,7 @@ function initMobileMenu() {
 }
 
 // ============================================================
-// CONTACT FORM - Sends to Flask API
+// CONTACT FORM - Sends to Flask API on Render
 // ============================================================
 function initContactForm() {
     const form = document.getElementById('contactForm');
@@ -109,7 +113,6 @@ function initContactForm() {
         const submitBtn = form.querySelector('button[type="submit"]');
         const formMessage = document.getElementById('formMessage');
 
-        // Gather form data
         const data = {
             name: form.querySelector('#contactName').value.trim(),
             email: form.querySelector('#contactEmail').value.trim(),
@@ -117,7 +120,6 @@ function initContactForm() {
             message: form.querySelector('#contactMessage').value.trim()
         };
 
-        // Client-side validation
         if (!data.name || !data.email || !data.message) {
             showFormMessage(formMessage, 'Please fill in all required fields.', 'error');
             showToast('Please fill in all required fields.', 'error');
@@ -130,13 +132,12 @@ function initContactForm() {
             return;
         }
 
-        // Show loading state
         submitBtn.classList.add('btn-loading');
         submitBtn.disabled = true;
         hideFormMessage(formMessage);
 
         try {
-            const response = await fetch('/api/contact', {
+            const response = await fetch(`${API_BASE_URL}/api/contact`, {  // ✅ Render URL
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
@@ -183,15 +184,15 @@ function hideFormMessage(el) {
 }
 
 // ============================================================
-// API UTILITY (for future use / extending)
+// API UTILITY
 // ============================================================
 const API = {
     async get(endpoint) {
-        const res = await fetch(`/api/${endpoint}`);
+        const res = await fetch(`${API_BASE_URL}/api/${endpoint}`);
         return res.json();
     },
     async post(endpoint, data) {
-        const res = await fetch(`/api/${endpoint}`, {
+        const res = await fetch(`${API_BASE_URL}/api/${endpoint}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -200,5 +201,4 @@ const API = {
     }
 };
 
-// Make API available globally
 window.PortfolioAPI = API;
